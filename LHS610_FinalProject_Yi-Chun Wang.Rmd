@@ -1,0 +1,268 @@
+---
+title: "LHS 610 Final Project"
+author: "Yi-Chun Wang"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+# https://health.google.com/covid-19/open-data/raw-data
+#aggregated_covid_data = read_csv('https://storage.googleapis.com/covid19-open-data/v3/latest/aggregated.csv')
+#library(stringr)
+
+#covid_data = aggregated_covid_data %>%
+ # filter(str_detect(location_key, '^US'))
+#library(haven)
+
+#ATS_data = read_sav("ATS2021 Dataset_Dataverse posting.sav")
+#hello = read_sav("DB_PWP_Users_English.sav")
+```
+```{r}
+# Setup
+library(tidyverse)
+library(dbplyr)
+library(ggplot2)
+OSMH2021_survey = read_csv("OSMH Mental Health in Tech Survey Results 2021.csv")
+
+# Data Preparation
+#testing = OSMH2021_survey %>% mutate(age = `What is your age?`)
+dataset_OSMH2021 =
+  OSMH2021_survey %>%
+  mutate(age = `What is your age?`, gender = `What is your gender?`, country = `What country do you *live* in?`, work_country = `What country do you *work* in?`, race =`What is your race?`, self_employed = `*Are you self-employed?*`, company_size = `How many employees does your company or organization have?`, tech_comp = `Is your employer primarily a tech company/organization?`, IT_role = `Is your primary role within your company related to tech/IT?`, provide_mh_coverage = `Does your employer provide mental health benefits as part of healthcare coverage?`, mh_resources = `Does your employer offer resources to learn more about mental health disorders and options for seeking help?`, request_leave = `If a mental health issue prompted you to request a medical leave from work, how easy or difficult would it be to ask for that leave?`, discuss_employers = `Have you ever discussed your mental health with your employer?`, discuss_coworkers = `Have you ever discussed your mental health with coworkers?`, importance_mh = `Overall, how much importance does your employer place on mental health?`, current_mh_disorder = `Do you *currently* have a mental health disorder?`, diagnosed_mh_disorder = `Have you ever been *diagnosed* with a mental health disorder?`, past_mh_disorder = `Have you had a mental health disorder in the past?`, family_history = `Do you have a family history of mental illness?`, unsupportive = `Have you observed or experienced an *unsupportive or badly handled response* to a mental health issue in your current or previous workplace?`, industry_support_score = `Overall, how well do you think the tech industry supports employees with mental health issues?`, COVID = `Have you been diagnosed with COVID-19?`) %>%
+  select(age, gender, country, work_country, race, self_employed, company_size, tech_comp, IT_role, provide_mh_coverage, mh_resources, request_leave, discuss_employers, discuss_coworkers, importance_mh, current_mh_disorder, diagnosed_mh_disorder, past_mh_disorder, family_history, unsupportive, industry_support_score, COVID)
+ #%>%
+  #select(age, gender, country, work_country, race, self-employed, )
+```
+
+```{r}
+# Table 1
+#lapply(dataset_OSMH2021, unique)
+
+# Clean values
+cleaned_dataset =
+  dataset_OSMH2021 %>%
+  mutate(age_group = case_when(age < 18 ~ "< 18",
+                               age >= 18 & age <=26 ~ "Gen Z",
+                               age > 26 & age <= 42 ~ "Millennials",
+                               age > 42 & age <= 58 ~ "Gen X",
+                               age > 58 & age <= 77 ~ "Baby Boomers",
+                               age > 77 ~ "The Silent Gen"),
+         gender = case_when(gender %in% c("Female", "female", "f", "F", "woman", "FEMALE") ~ "Female",
+                            gender %in% c("male", "Male", "MALE", "M", "m", "man") ~ "Male",
+                            is.na(gender) ~ NA,
+                            TRUE ~ "Other"),
+         country = case_when(country == "United States of America" ~ "USA",
+                                  is.na(country) ~ NA,
+                                  TRUE ~ "Outside USA"),
+         work_country = case_when(work_country == "United States of America" ~ "USA",
+                                  is.na(work_country) ~ NA,
+                                  TRUE ~ "Outside USA"),
+         tech_comp = case_when(tech_comp == 1 ~ "Yes", tech_comp == 0 ~ "No", TRUE ~ NA),
+         IT_role = case_when(IT_role == 1 ~ "Yes", IT_role == 0 ~ "No", TRUE ~ NA),
+         provide_mh_coverage = if_else(provide_mh_coverage == "Not eligible for coverage / NA", "No", provide_mh_coverage),
+         current_mh_disorder = if_else(current_mh_disorder == "Possibly", "Yes", current_mh_disorder),
+         past_mh_disorder = if_else(past_mh_disorder == "Possibly", "Yes", past_mh_disorder),
+         unsupportive = if_else(unsupportive %in% c("Yes, I observed", "Yes, I experienced"), "Yes", unsupportive))
+lapply(cleaned_dataset, unique)
+
+#dataset_summary =
+cleaned_dataset %>%
+  summarize(
+    N = n(),
+    age_mean = mean(age),
+    age_sd = sd(age))
+cleaned_dataset %>%
+  group_by(age_group) %>%
+  summarize(n = n()) %>%
+  mutate(pct_age_group = n/sum(n)*100)
+
+cleaned_dataset %>%
+  group_by(country) %>%
+  summarize(n = n()) %>%
+  mutate(pct_country = n/sum(n)*100)
+
+cleaned_dataset %>%
+  group_by(work_country) %>%
+  summarize(n2 = n()) %>%
+  mutate(pct_work_country = n2/sum(n2)*100)
+  
+cleaned_dataset %>%
+  group_by(race) %>%
+  summarize(n = n()) %>%
+  mutate(pct_race = n/sum(n)*100)
+
+cleaned_dataset %>%
+  group_by(self_employed) %>%
+  summarize(n = n()) %>%
+  mutate(pct_self_employed = n/sum(n)*100)
+
+cleaned_dataset %>%
+  group_by(company_size) %>%
+  summarize(n = n()) %>%
+  mutate(pct_size = n/sum(n)*100)
+
+cleaned_dataset %>%
+  group_by(tech_comp) %>%
+  summarize(n = n()) %>%
+  mutate(pct_tech_comp = n/sum(n)*100) 
+
+cleaned_dataset %>%
+  group_by(IT_role) %>%
+  summarize(n = n()) %>%
+  mutate(pct_role = n/sum(n)*100) 
+
+cleaned_dataset %>%
+  group_by(provide_mh_coverage) %>%
+  summarize(n = n()) %>%
+  mutate(pct_coverage = n/sum(n)*100) 
+
+cleaned_dataset %>%
+  group_by(mh_resources) %>%
+  summarize(n = n()) %>%
+  mutate(pct_resources = n/sum(n)*100) 
+
+cleaned_dataset %>%
+  group_by(unsupportive) %>%
+  summarize(n = n()) %>%
+  mutate(pct_unsupportive = n/sum(n)*100)
+
+cleaned_dataset %>%
+  group_by(request_leave) %>%
+  summarize(n = n()) %>%
+  mutate(pct_leave = n/sum(n)*100) 
+
+cleaned_dataset %>%
+  group_by(current_mh_disorder) %>%
+  summarize(n = n()) %>%
+  mutate(pct_current_mh = n/sum(n)*100)
+
+cleaned_dataset %>%
+  group_by(past_mh_disorder) %>%
+  summarize(n = n()) %>%
+  mutate(pct_past_mh = n/sum(n)*100)
+
+cleaned_dataset %>%
+  group_by(family_history) %>%
+  summarize(n = n()) %>%
+  mutate(pct_fam_history = n/sum(n)*100)
+
+cleaned_dataset %>%
+  summarize(ave_industry_support_score = mean(industry_support_score), SD_score = sd(industry_support_score), n = n())
+
+summary(cleaned_dataset$industry_support_score, sd)
+
+```
+
+
+```{r}
+# Unstratified analysis
+# ggplot
+cleaned_dataset %>%
+  ggplot(aes(x = current_mh_disorder, fill = provide_mh_coverage)) +
+  geom_bar(position = "fill")
+
+###
+cleaned_dataset %>%
+  ggplot(aes(x = provide_mh_coverage, fill = current_mh_disorder)) +
+  geom_bar(position = "fill") +
+  labs(title = "Barchart for Provision of Mental Health Coverage and Employees' Current Mental Health Disorders",
+       x = "Provision of Mental Health Coverage by Employers",
+       y = "Percentages",
+       fill = "Employees' Current Mental Health Disorders") +
+  theme(plot.title = element_text(size = 11),
+        legend.title = element_text(size = 10))
+
+cleaned_dataset %>%
+  ggplot(aes(x = provide_mh_coverage, fill = current_mh_disorder)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~tech_comp)
+
+cleaned_dataset %>%
+  ggplot(aes(x = provide_mh_coverage, fill = current_mh_disorder)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~work_country)
+
+###
+cleaned_dataset %>%
+  ggplot(aes(x = provide_mh_coverage, fill = current_mh_disorder)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~mh_resources)
+
+cleaned_dataset %>%
+  ggplot(aes(x = provide_mh_coverage, fill = current_mh_disorder)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~company_size)
+
+cleaned_dataset %>%
+  filter(unsupportive %in% c("Yes", "No", "Maybe/Not sure")) %>%
+  ggplot(aes(x = provide_mh_coverage, fill = current_mh_disorder)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~unsupportive)
+
+cleaned_dataset %>%
+  ggplot() +
+  geom_bar(aes(x = current_mh_disorder , fill = tech_comp), position = "fill")
+
+cleaned_dataset %>%
+  ggplot() +
+  geom_bar(aes(x = tech_comp , fill = current_mh_disorder), position = "fill")
+
+cleaned_dataset %>%
+  ggplot(aes(x = mh_resources, fill = current_mh_disorder)) +
+  geom_bar(position = "fill")
+
+cleaned_dataset %>%
+  filter(unsupportive %in% c("Yes", "No", "Maybe/Not sure")) %>%
+  ggplot(aes(x = mh_resources, fill = current_mh_disorder)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~unsupportive)
+
+cleaned_dataset %>%
+  ggplot(aes(x = IT_role, fill = current_mh_disorder)) +
+  geom_bar(position = "fill")
+
+
+
+
+# Chi-square: provide_mh_coverage (y/n/dk) vs. current_mh_disorders (y/n/dk) --> 3/3 catecogical (chi-square)
+chisq.test(table(cleaned_dataset$provide_mh_coverage, cleaned_dataset$current_mh_disorder))
+
+
+```
+```{r}
+# Confounder 1: mh_resources
+
+cleaned_dataset %>%
+  ggplot(aes(x = provide_mh_coverage, fill = current_mh_disorder)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~mh_resources) +
+  labs(title = "Barcharts for Provision of Mental Health Coverage and Employees' Mental Health (Faceted by Available Resources)",
+       x = "Provision of Mental Health Coverage by Employers",
+       y = "Percentages",
+       fill = "Employees' Current Mental Health Disorders") +
+  theme(plot.title = element_text(size = 9),
+        legend.title = element_text(size = 10))
+
+cleaned_dataset %>%
+  filter(mh_resources %in% c("Yes", "No", "I don't know")) %>%
+  ggplot(aes(x = provide_mh_coverage, fill = current_mh_disorder)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~mh_resources)
+```
+```{r}
+# Confounder 2:
+cleaned_dataset %>%
+  ggplot(aes(x = provide_mh_coverage, fill = current_mh_disorder)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~work_country) +
+  labs(title = "Barcharts for Provision of Mental Health Coverage and Employees' Mental Health (Faceted by Work Country)",
+       x = "Provision of Mental Health Coverage by Employers",
+       y = "Percentages",
+       fill = "Employees' Current Mental Health Disorders") +
+  theme(plot.title = element_text(size = 10),
+        legend.title = element_text(size = 10))
+```
+
