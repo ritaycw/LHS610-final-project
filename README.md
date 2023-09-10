@@ -1,1 +1,3 @@
 # LHS610-final-project
+## Does the provision of mental health insurance coverage by employers improve mental health disorders among employees in the tech-related industry?
+Mental health is increasingly recognized as crucial for workplace well-being and productivity. This project aims to research the pressing issue of unaddressed mental health problems in the workplace, particularly in the tech industry, exacerbated by the COVID-19 pandemic. It explores whether employers offering mental health insurance coverage can improve mental health disorders among tech industry employees. This research is motivated by the need to reduce workplace burnout and enhance overall job performance in this vital sector.
